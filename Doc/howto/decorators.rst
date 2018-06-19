@@ -15,61 +15,76 @@ This HOWTO provides
 Definition
 ----------
 
-A decorator is a function that takes a function, method, coroutine, or class and
-returns it wrapped in a new object with some logic.
+A decorator is a callable that takes a function, method, coroutine, or class (
+from now on, a "decorable object") and returns it wrapped in a new object with
+some logic.
 
-Decorators has a myriad of uses.
+Some common built-in decorators are @classmethod, @staticmethod and @property.
 
-Some common built-in decorators are classmethod, staticmethod and property.
-
-And the standard library provides several more:
-
-@contextlib.contextmanager
-@functools.singledispatch
-
+The standard library provides several more: @contextlib.contextmanager,
+@functools.singledispatch, just to name a few.
 
 Background
 ----------
 
-Before talking about decorators, it's important to understand a few things that
-make working with decorators possible.
+Before talking about decorators, it's good to know a couple of things that make
+decorators possible in Python.
 
-Functions are first class citizens in Python: identifiers can point
-to them, they can be passed as arguments, and they can also be returned by
-functions::
+All decorable objects are first class citizens.
 
-   def return_obj(obj):
-       return obj
+A decorable object name is a regular identifier that can be rebounded::
 
-   newprint = return_obj(print)
+   sum = print
+   sum([1, 2, 3])
 
-   print('Hi')
+Decorable objects can be passed as arguments to callables::
+
+   type(sum)
+
+Decorable objects can be returned by callables::
+
+   def return_obj():
+       return print
+
+   newprint = return_obj()
    newprint('Hi')
 
-Each function has its own namespace, and identifiers are looked in the
-namespace of the function they are defined.
+Each function has its own namespace, and identifiers are looked in the namespace of the function they are defined::
 
-What's more, functions can be nested::
+   pass
+
+Function definitions can be nested::
 
    def foo(a, b):
        def sum_numbers(a, b):
            return a + b
+
        return sum_numbers(a, b)
 
    foo(10, 20)
 
+Decorators
+----------
 
+DEcorator::
+
+   def decorator(obj):
+       def decorated_object():
+           obj()
+
+       return decorated_object
 
 Decorator expressions
 ---------------------
 
-Python provides some syntactic sugar for working with decorators.
+Python provides syntactic sugar for decorating decorable objects definitions.
 
 For example, given the decorator::
 
    def decorator(obj):
        def decorated_object():
            obj()
+
        return decorated_object
 
 This::
