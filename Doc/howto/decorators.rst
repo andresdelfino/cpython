@@ -10,63 +10,66 @@ Decorators HOWTO
 Abstract
 --------
 
-This HOWTO provides
-
-Definition
-----------
-
-A decorator is a callable that takes a function, method, coroutine, or class (
-from now on, a "decorable object") and returns it wrapped in a new object with
-some logic.
-
-Some common built-in decorators are @classmethod, @staticmethod and @property.
-
-The standard library provides several more: @contextlib.contextmanager,
-@functools.singledispatch, just to name a few.
+This HOWTO explains how to write decorators and decorator factories.
 
 Background
 ----------
 
-Before talking about decorators, it's good to know a couple of things that make
-decorators possible in Python.
+Before discussing decorators, let's go over the things that make decorators possible in Python.
 
-All decorable objects are first class citizens.
+The most important thing is that functions, coroutines and classes are first class citizens, which allows us to:
 
-A decorable object name is a regular identifier that can be rebounded::
+* Pass them as arguments::
 
-   sum = print
-   sum([1, 2, 3])
+     help(print)
 
-Decorable objects can be passed as arguments to callables::
+* Return them as values::
 
-   type(sum)
+     def f():
+         return print
 
-Decorable objects can be returned by callables::
+     f()('Hello World')
 
-   def return_obj():
-       return print
+* Bound them to identifiers::
 
-   newprint = return_obj()
-   newprint('Hi')
+     my_print = print
+     my_print('Hello World')
 
-Each function has its own namespace, and identifiers are looked in the namespace of the function they are defined::
+Another import thing is that functions can be nested::
 
-   pass
+   def f1():
+       def f2():
+           print('Hello World')
 
-Function definitions can be nested::
+       f2()
+       print('This is getting old...')
 
-   def foo(a, b):
-       def sum_numbers(a, b):
-           return a + b
+   f1()
 
-       return sum_numbers(a, b)
+Variables accesed by a nested function but not defined in it are looked up in the nesting function, recursively, until reaching the non-nested function, which looks for the identifier in the global namespace::
 
-   foo(10, 20)
+   y = 'y'
+
+   def f1():
+       x = 'x'
+
+       def f2():
+           print(x, y)
+
+       f2()
+
+   f1()
+
+Nested functions code is preserved with the values that free variables had at definition time in what is known as "closures".
 
 Decorators
 ----------
 
-DEcorator::
+A decorator is a one-parameter function that takes a function, coroutine, or class.
+
+Usually, decorators that take a function/coroutine return a new function/coroutine, and decorators that take a class return the same object.
+
+Decorator::
 
    def decorator(obj):
        def decorated_object():
@@ -74,10 +77,19 @@ DEcorator::
 
        return decorated_object
 
-Decorator expressions
----------------------
+   def f():
+       pass
 
-Python provides syntactic sugar for decorating decorable objects definitions.
+   f = decorator(f)
+
+Decorators can be applied in nested fashion::
+
+   obj = time(log(obj))
+
+Decoration at definition time
+-----------------------------
+
+Python provides syntactic sugar for applying decorators at definition time.  What follows @ must be an expression that evaluates to a callable requiring only one argument.  This is import to highlight: what cames after @ is not a decorator, but an expression to evalutes to a decorator.
 
 For example, given the decorator::
 
@@ -100,18 +112,7 @@ Can be written as::
    def obj():
        pass
 
-What follows @ must be an expression that evaluates to a callable requiring
-only one argument.
-
-Decorator nesting
------------------
-
-Decorators can be applied in nested fashion::
-
-   obj = time(log(obj))
-
-Decorator expressions support such nesting by putting each decorator in its
-own line::
+What's more, multiple decorators can also be applied at definition time by simply putting each decorator in a new line::
 
    @time
    @log
@@ -121,50 +122,78 @@ own line::
 Decorator factories
 -------------------
 
-While an author can write a decorator requiring more arguments than just the
-object to be decorated to add some logic to the decorator, as in::
+Having only one parameter, with fixed semantics, decorators do not allow parametrization.
 
-   def decorator(obj, log_start, log_end):
-      def decorated_object():
-          if log_start:
-              print('Start')
-          obj()
-          if log_end:
-              print('End')
-      return decorated_object
-   
-   def obj():
-      print('Test')
-   
-   obj = decorator(obj, log_start=True, log_end=True)
-   
-   obj()
+One could think that the solution is to have a decorator for each case::
 
-A function with such signature is not supported as a decorator expression, as
-it doesn't evaluate to a callable that only requires one argument.
+   def log_start(obj):
+       def decorated_object():
+           print('Start')
+           obj()
 
-Enter decorator factories.  Decorator factories takes the arguments used to
-configure a decorator and returns a decorator::
+       return decorated_object
+
+   def log_end(obj):
+       def decorated_object():
+           obj()
+           print('End')
+
+       return decorated_object
+
+   def log_start_and_end(obj):
+       def decorated_object():
+           print('Start')
+           obj()
+           print('End')
+
+       return decorated_object
+
+It's clear how the DRY principle is being violated here.
+
+Fortunately, this isn't needed at all.  Enter decorator factories.  Decorator factories take the arguments needed to create the right decorator and return it.
+
+Given the decorator factory::
 
    def decorator_factory(log_start, log_end):
       def decorator(obj):
           def decorated_object():
               if log_start:
                   print('Start')
+
               obj()
+
               if log_end:
                   print('End')
+
           return decorated_object
+
       return decorator
+
+It can be applied::
    
+   obj = decorator_factory(log_start=True, log_end=True)(obj)
+
+Or by using the @ syntax::
+
    @decorator_factory(log_start=True, log_end=True)
    def obj():
       print('Test')
    
    obj()
 
-Note that decorator factories are not decorators themselves as they don't take
-an object and return it with added logic: they return a decorator instead.
+Note that decorator factories are not decorators themselves.
+
+Examples in the standard library
+--------------------------------
+
+The standard library provides several decorators that can be read to see how decorators work in real life:
+
+=================================   ==========================================
+:meth:`contextlib.contextmanager`   function decorator
+:meth:`functools.total_ordering`    class decorator
+:meth:`unittest.skip`               function decorator factory
+:meth:`dataclasses.dataclass`       class decorator factory or class decorator
+=================================   ==========================================
 
 See also
 --------
