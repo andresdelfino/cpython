@@ -17,11 +17,11 @@ Background
 
 Before discussing decorators, let's go over the things that make decorators possible in Python.
 
-The most important thing is that functions, coroutines and classes are first class citizens, which allows us to:
+The most important thing is that functions, coroutines and classes are first-class citizens in Python, which allows us to:
 
 * Pass them as arguments::
 
-     help(print)
+     print(print)
 
 * Return them as values::
 
@@ -30,50 +30,48 @@ The most important thing is that functions, coroutines and classes are first cla
 
      f()('Hello World')
 
-* Bound them to identifiers::
+* Bound them to new identifiers::
 
      my_print = print
      my_print('Hello World')
 
-Another import thing is that functions can be nested::
+Also, functions, coroutines and classes can be defined inside a function::
 
-   def f1():
-       def f2():
+   def nesting_func():
+       def nested_func():
            print('Hello World')
 
-       f2()
+       nested_func()
        print('This is getting old...')
 
-   f1()
+   nesting_func()
 
-Variables accesed by a nested function but not defined in it are looked up in the nesting function, recursively, until reaching the non-nested function, which looks for the identifier in the global namespace::
+Variables accesed by a nested function but not defined in it ("free variables") are looked up in the nesting function, recursively, until reaching the non-nested function, which looks for the variable in the global namespace::
 
    y = 'y'
 
-   def f1():
+   def nesting_func():
        x = 'x'
 
-       def f2():
+       def nested_func():
            print(x, y)
 
-       f2()
+       nested_func()
 
-   f1()
+   nesting_func()
 
-Nested functions code is preserved with the values that free variables had at definition time in what is known as "closures".
+Free variables values had at the nested function definition time is stored in what is known as "closures".
 
 Decorators
 ----------
 
 A decorator is a one-parameter function that takes a function, coroutine, or class.
 
-Usually, decorators that take a function/coroutine return a new function/coroutine, and decorators that take a class return the same object.
-
-Decorator::
+Function decorator::
 
    def decorator(obj):
-       def decorated_object():
-           obj()
+       def decorated_object(*arg, **kwargs):
+           return obj(*arg, **kwargs)
 
        return decorated_object
 
@@ -82,47 +80,29 @@ Decorator::
 
    f = decorator(f)
 
+Class decorator::
+
+   def decorator(cls):
+       def __repr__(self):
+           return 'Hola'
+
+       cls.__repr__ = __repr__
+
+       return cls
+
+   class C:
+       pass
+
+   C = decorator(C)
+
 Decorators can be applied in nested fashion::
 
    obj = time(log(obj))
 
-Decoration at definition time
------------------------------
-
-Python provides syntactic sugar for applying decorators at definition time.  What follows @ must be an expression that evaluates to a callable requiring only one argument.  This is import to highlight: what cames after @ is not a decorator, but an expression to evalutes to a decorator.
-
-For example, given the decorator::
-
-   def decorator(obj):
-       def decorated_object():
-           obj()
-
-       return decorated_object
-
-This::
-
-   def obj():
-       pass
-
-   obj = decorator(obj)
-
-Can be written as::
-
-   @decorator
-   def obj():
-       pass
-
-What's more, multiple decorators can also be applied at definition time by simply putting each decorator in a new line::
-
-   @time
-   @log
-   def obj():
-       pass
-
 Decorator factories
 -------------------
 
-Having only one parameter, with fixed semantics, decorators do not allow parametrization.
+Having only one parameter with fixed semantics, decorators have no parametrization.
 
 One could think that the solution is to have a decorator for each case::
 
@@ -148,11 +128,9 @@ One could think that the solution is to have a decorator for each case::
 
        return decorated_object
 
-It's clear how the DRY principle is being violated here.
+At this point it should be clear how the DRY principle is being violated, but let's go one step further: what if we wanted the time format of the logging to be configurable? We can't achieve that with decorators.
 
-Fortunately, this isn't needed at all.  Enter decorator factories.  Decorator factories take the arguments needed to create the right decorator and return it.
-
-Given the decorator factory::
+Enter decorator factories.  Decorator factories take arguments, create a decorator, and return it::
 
    def decorator_factory(log_start, log_end):
       def decorator(obj):
@@ -168,12 +146,45 @@ Given the decorator factory::
           return decorated_object
 
       return decorator
-
-It can be applied::
    
    obj = decorator_factory(log_start=True, log_end=True)(obj)
 
-Or by using the @ syntax::
+Note that decorator factories are not decorators themselves.
+
+Decoration at definition time
+-----------------------------
+
+Python provides syntactic sugar for applying decorators at definition time.  What follows @ must be an expression that evaluates to a function requiring only one argument.  This is important to highlight: what comes after @ is not a decorator, but an expression that evalutes to a decorator.
+
+For example, given the decorator::
+
+   def decorator(obj):
+       def decorated_object():
+           obj()
+
+       return decorated_object
+
+This::
+
+   def obj():
+       pass
+
+   obj = decorator(obj)
+
+Can be applied at definition time written as::
+
+   @decorator
+   def obj():
+       pass
+
+Multiple decorators can be applied at definition time by putting each decorator in a new line::
+
+   @time
+   @log
+   def obj():
+       pass
+
+Decorator factories can also be applied at definition time::
 
    @decorator_factory(log_start=True, log_end=True)
    def obj():
@@ -181,7 +192,7 @@ Or by using the @ syntax::
    
    obj()
 
-Note that decorator factories are not decorators themselves.
+Decorating at definition time is not always possible (as when the definitions are made by a third party module), but when it is, it is much easier to read.
 
 Examples in the standard library
 --------------------------------
