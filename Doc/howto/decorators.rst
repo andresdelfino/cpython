@@ -60,12 +60,31 @@ Variables accesed by a nested function but not defined in it ("free variables") 
 
    nesting_func()
 
-Free variables values had at the nested function definition time is stored in what is known as "closures".
+The values that free variables had at the nested function definition time are stored in what is known as "closures"::
+
+   import inspect
+
+   y = '1'
+
+   def nesting_func():
+       x = 'a'
+
+       def nested_func():
+           print(x, y, z)
+
+       return nested_func
+
+   my_func = nesting_func()
+   y = '2'
+
+   print(inspect.getclosurevars(my_func))
 
 Decorators
 ----------
 
-A decorator is a function or a class that requires only one parameter, that takes a function, coroutine, or class.
+Decorators let you add logic to a function, coroutine or class.
+
+A decorator is a function that requires only one parameter, or a class whose constructor requires only one parameter. Said parameter is the function, coroutine, or class to be decorated.
 
 Function decorator::
 
@@ -106,55 +125,83 @@ Having only one parameter with fixed semantics, decorators have no parametrizati
 
 One could think that the solution is to have a decorator for each case::
 
+   import datetime
+   
+   def helper(obj, log_start, log_end):
+       if log_start:
+           timestamp = datetime.datetime.today()
+           print('{:%Y-%m-%d %M:%H:%S} Start'.format(timestamp))
+   
+       r = obj()
+   
+       if log_end:
+           timestamp = datetime.datetime.today()
+           print('{:%Y-%m-%d %M:%H:%S} End'.format(timestamp))
+   	
+       return r
+   
    def log_start(obj):
        def decorated_object():
-           print('Start')
-           obj()
-
+           return helper(obj, log_start=True, log_end=False)
+   
        return decorated_object
-
+   
    def log_end(obj):
        def decorated_object():
-           obj()
-           print('End')
-
+           return helper(obj, log_start=False, log_end=True)
+   
        return decorated_object
-
+   
    def log_start_and_end(obj):
        def decorated_object():
-           print('Start')
-           obj()
-           print('End')
-
+           return helper(obj, log_start=True, log_end=True)
+   
        return decorated_object
+       
+   @log_start
+   def saludar():
+       print('Hola')
+       
+   saludar()
 
-At this point it should be clear how the DRY principle is being violated, but let's go one step further: what if we wanted the time format of the logging to be configurable? We can't achieve that with decorators.
+At this point the code has already got very complex, but let's go one step further: what if the timestamp format must be configurable? We can't achieve that with decorators alone without recurring to global variables.
 
 Enter decorator factories.  Decorator factories take arguments, create a decorator, and return it::
 
-   def decorator_factory(log_start, log_end):
+   import datetime
+
+   def decorator_factory(log_start, log_end, format='%Y-%m-%d %M:%H:%S'):
       def decorator(obj):
           def decorated_object():
               if log_start:
-                  print('Start')
+                  timestamp = datetime.datetime.today()
+                  print('{:%Y-%m-%d %M:%H:%S} Start'.format(timestamp))
 
-              obj()
+              r = obj()
 
               if log_end:
-                  print('End')
+                  timestamp = datetime.datetime.today()
+                  print('{:%Y-%m-%d %M:%H:%S} End'.format(timestamp))
+
+              return r
 
           return decorated_object
 
       return decorator
    
-   obj = decorator_factory(log_start=True, log_end=True)(obj)
+   obj = decorator_factory(log_start=True, log_end=True, format='%Y%m%dT%M%H%S')(obj)
 
-Note that decorator factories are not decorators themselves.
+Note that decorator factories are not decorators themselves: they create the right decorators for the right scenarios.
 
 Decoration at definition time
 -----------------------------
 
-Python provides syntactic sugar for applying decorators at definition time.  What follows @ must be an expression that evaluates to a function requiring only one argument.  This is important to highlight: what comes after @ is not a decorator, but an expression that evalutes to a decorator.
+To improve readability, Python provides syntactic sugar for applying decorators at definition time::
+
+   @decorator_expression
+   decorated object definition
+
+What follows ``@`` must be an expression that evaluates to a function requiring only one argument.  This is important to highlight: what comes after ``@`` is not necessarily a decorator, but an expression that evalutes to one.
 
 For example, given the decorator::
 
@@ -164,20 +211,13 @@ For example, given the decorator::
 
        return decorated_object
 
-This::
-
-   def obj():
-       pass
-
-   obj = decorator(obj)
-
-Can be applied at definition time written as::
+It can be applied at definition time as::
 
    @decorator
    def obj():
        pass
 
-Multiple decorators can be applied at definition time by putting each decorator in a new line::
+Multiple decorators can be applied at definition time by putting each one in a new line::
 
    @time
    @log
@@ -186,18 +226,18 @@ Multiple decorators can be applied at definition time by putting each decorator 
 
 Decorator factories can also be applied at definition time::
 
-   @decorator_factory(log_start=True, log_end=True)
+   @log(start=True, end=True)
    def obj():
       print('Test')
    
    obj()
 
-Decorating at definition time is not always possible (as when the definitions are made by a third party module), but when it is, it is much easier to read.
+Decorating at definition time is not always possible (as when the definitions are made by a third party module), but when it is possible, decoration at definition time is much easier to read.
 
 Examples in the standard library
 --------------------------------
 
-The standard library provides several decorators that can be read to see how decorators work in real life:
+The standard library provides several decorators and decorator factories that can be studied to see how they work in real life:
 
 =================================   ==========================================
 :meth:`contextlib.contextmanager`   function decorator
