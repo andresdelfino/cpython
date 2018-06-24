@@ -164,7 +164,7 @@ One could think that the solution is to have a decorator for each case::
        
    saludar()
 
-At this point the code has already got very complex, but let's go one step further: what if the timestamp format must be configurable? We can't achieve that with decorators alone without recurring to global variables.
+At this point the code has already gotten very complex, but let's go one step further: what if the timestamp format must be configurable? We can't achieve that with decorators alone without recurring to global variables.
 
 Enter decorator factories.  Decorator factories take arguments, create a decorator, and return it::
 
@@ -232,7 +232,7 @@ Decorator factories can also be applied at definition time::
    
    obj()
 
-Decorating at definition time is not always possible (as when the definitions are made by a third party module), but when it is possible, decoration at definition time is much easier to read.
+Decoration at definition time is not always possible (as when definitions are made by a third party module), but when it is possible, decoration at definition time is much easier to read.
 
 Examples in the standard library
 --------------------------------
