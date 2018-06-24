@@ -65,7 +65,7 @@ Free variables values had at the nested function definition time is stored in wh
 Decorators
 ----------
 
-A decorator is a one-parameter function that takes a function, coroutine, or class.
+A decorator is a function or a class that requires only one parameter, that takes a function, coroutine, or class.
 
 Function decorator::
 
