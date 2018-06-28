@@ -128,41 +128,43 @@ One could think that the solution is to have a decorator for each case::
    import datetime
    
    def helper(obj, log_start, log_end):
+       format = '%Y-%m-%d %M:%H:%S'
+
        if log_start:
            timestamp = datetime.datetime.today()
-           print('{:%Y-%m-%d %M:%H:%S} Start'.format(timestamp))
+           print('{:{}} Start'.format(timestamp, format))
    
        r = obj()
    
        if log_end:
            timestamp = datetime.datetime.today()
-           print('{:%Y-%m-%d %M:%H:%S} End'.format(timestamp))
+           print('{:{}} End'.format(timestamp, format))
    	
        return r
    
    def log_start(obj):
-       def decorated_object():
+       def decorated_object(*args, **kwargs):
            return helper(obj, log_start=True, log_end=False)
    
        return decorated_object
    
    def log_end(obj):
-       def decorated_object():
+       def decorated_object(*args, **kwargs):
            return helper(obj, log_start=False, log_end=True)
    
        return decorated_object
    
    def log_start_and_end(obj):
-       def decorated_object():
+       def decorated_object(*args, **kwargs):
            return helper(obj, log_start=True, log_end=True)
    
        return decorated_object
        
    @log_start
-   def saludar():
-       print('Hola')
+   def sayhi():
+       print('Hi')
        
-   saludar()
+   sayhi()
 
 At this point the code has already gotten very complex, but let's go one step further: what if the timestamp format must be configurable? We can't achieve that with decorators alone without recurring to global variables.
 
@@ -172,12 +174,12 @@ Enter decorator factories.  Decorator factories take arguments, create a decorat
 
    def decorator_factory(log_start, log_end, format='%Y-%m-%d %M:%H:%S'):
       def decorator(obj):
-          def decorated_object():
+          def decorated_object(*args, **kwargs):
               if log_start:
                   timestamp = datetime.datetime.today()
                   print('{:{}} Start'.format(timestamp, format))
 
-              r = obj()
+              r = obj(*args, **kwargs)
 
               if log_end:
                   timestamp = datetime.datetime.today()
