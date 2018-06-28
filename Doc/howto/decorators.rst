@@ -175,13 +175,13 @@ Enter decorator factories.  Decorator factories take arguments, create a decorat
           def decorated_object():
               if log_start:
                   timestamp = datetime.datetime.today()
-                  print('{:%Y-%m-%d %M:%H:%S} Start'.format(timestamp))
+                  print('{:{}} Start'.format(timestamp, format))
 
               r = obj()
 
               if log_end:
                   timestamp = datetime.datetime.today()
-                  print('{:%Y-%m-%d %M:%H:%S} End'.format(timestamp))
+                  print('{:{}} End'.format(timestamp, format))
 
               return r
 
