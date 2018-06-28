@@ -127,14 +127,14 @@ One could think that the solution is to have a decorator for each case::
 
    import datetime
    
-   def helper(obj, log_start, log_end):
+   def helper(obj, log_start, log_end, *args, **kwargs):
        format = '%Y-%m-%d %M:%H:%S'
 
        if log_start:
            timestamp = datetime.datetime.today()
            print('{:{}} Start'.format(timestamp, format))
    
-       r = obj()
+       r = obj(*args, **kwargs)
    
        if log_end:
            timestamp = datetime.datetime.today()
@@ -144,19 +144,19 @@ One could think that the solution is to have a decorator for each case::
    
    def log_start(obj):
        def decorated_object(*args, **kwargs):
-           return helper(obj, log_start=True, log_end=False)
+           return helper(obj, log_start=True, log_end=False, *args, **kwargs)
    
        return decorated_object
    
    def log_end(obj):
        def decorated_object(*args, **kwargs):
-           return helper(obj, log_start=False, log_end=True)
+           return helper(obj, log_start=False, log_end=True, *args, **kwargs)
    
        return decorated_object
    
    def log_start_and_end(obj):
        def decorated_object(*args, **kwargs):
-           return helper(obj, log_start=True, log_end=True)
+           return helper(obj, log_start=True, log_end=True, *args, **kwargs)
    
        return decorated_object
        
