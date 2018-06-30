@@ -137,7 +137,7 @@ When decorating an object, all metadata is losed in the decorated object::
    print(function.__qualname__)
    print(function.__annotations__)
 
-To prevent this, the functools.wraps decorator can be used::
+To prevent this, the :meth:`functools.wraps` decorator can be used::
 
    import functools
 
@@ -172,7 +172,7 @@ One could think that the solution is to have a decorator for each case::
            timestamp = datetime.datetime.today()
            print('{:{}} Start'.format(timestamp, format))
    
-       r = obj(*args[0], **kwargs[1])
+       r = obj(*args[0], **args[1])
    
        if log_end:
            timestamp = datetime.datetime.today()
