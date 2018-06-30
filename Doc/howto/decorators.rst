@@ -84,7 +84,7 @@ Decorators
 
 Decorators let you add logic to a function, coroutine or class.
 
-A decorator is a function that requires only one parameter, or a class whose constructor requires only one parameter. Said parameter is the function, coroutine, or class to be decorated.
+A decorator is a function that requires only one argument, a class whose constructor requires only one argument, or an instance of a class that has a :meth:`__class__` method that requires only one argument. Said argument is the function, coroutine, or class to be decorated.
 
 Function decorator::
 
@@ -118,10 +118,20 @@ Decorators can be applied in nested fashion::
 
    obj = time(log(obj))
 
+Function and coroutine decorators
+---------------------------------
+
+xxx
+
+Class decorators
+----------------
+
+xxx
+
 Preserving the decorated object metadata
 ----------------------------------------
 
-When decorating an object, all metadata is losed in the decorated object::
+When decorating an object, all metadata is lost in the decorated object::
 
    def decorator(obj):
        def decorated(*args, **kwargs):
@@ -163,59 +173,6 @@ Decorator factories
 -------------------
 
 Having only one parameter with fixed semantics, decorators have no parametrization.
-
-One could think that the solution is to have a decorator for each case::
-
-   import datetime
-   import functools
-   
-   def helper(obj, log_start, log_end, args):
-       format = '%Y-%m-%d %M:%H:%S'
-
-       if log_start:
-           timestamp = datetime.datetime.today()
-           print('{:{}} Start'.format(timestamp, format))
-   
-       r = obj(*args[0], **args[1])
-   
-       if log_end:
-           timestamp = datetime.datetime.today()
-           print('{:{}} End'.format(timestamp, format))
-   	
-       return r
-   
-   def log_start(obj):
-       def decorated_object(*args, **kwargs):
-           return helper(obj, log_start=True, log_end=False, (args, kwargs))
-           
-       functools.update_wrapper(decorated_object, obj)
-   
-       return decorated_object
-   
-   def log_end(obj):
-       def decorated_object(*args, **kwargs):
-           return helper(obj, log_start=False, log_end=True, (args, kwargs))
-   
-       functools.update_wrapper(decorated_object, obj)
-
-       return decorated_object
-   
-   def log_start_and_end(obj):
-       def decorated_object(*args, **kwargs):
-           return helper(obj, log_start=True, log_end=True, (args, kwargs))
-   
-       functools.update_wrapper(decorated_object, obj)
-
-       return decorated_object
-       
-   def sayhi():
-       print('Hi')
-       
-   sayhi = log_start(sayhi)
-       
-   sayhi()
-
-At this point the code has already gotten very complex, but let's go one step further: what if the timestamp format must be configurable? We can't achieve that with decorators alone without recurring to global variables.
 
 Enter decorator factories.  Decorator factories take arguments, create a decorator, and return it::
 
