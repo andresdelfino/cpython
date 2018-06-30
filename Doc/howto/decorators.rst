@@ -118,6 +118,41 @@ Decorators can be applied in nested fashion::
 
    obj = time(log(obj))
 
+Preserving the decorated object metadata
+----------------------------------------
+
+When decorating an object, all metadata is losed in the decorated object::
+
+   def decorator(obj):
+       def decorated(*args, **kwargs):
+           return obj(*args, **kwargs)
+   
+       return decorated
+   
+   @decorator
+   def function(a: int, b: int) -> int:
+       '''Returns a + b'''
+       return a + b
+   
+   print(function.__qualname__)
+   print(function.__annotations__)
+
+To prevent this, the functools.wraps decorator can be used::
+
+   def decorator(obj):
+       def decorated(*args, **kwargs):
+           return obj(*args, **kwargs)
+   
+       return decorated
+   
+   @decorator
+   def function(a: int, b: int) -> int:
+       '''Returns a + b'''
+       return a + b
+   
+   print(function.__qualname__)
+   print(function.__annotations__)
+
 Decorator factories
 -------------------
 
@@ -127,14 +162,14 @@ One could think that the solution is to have a decorator for each case::
 
    import datetime
    
-   def helper(obj, log_start, log_end, *args, **kwargs):
+   def helper(obj, log_start, log_end, args):
        format = '%Y-%m-%d %M:%H:%S'
 
        if log_start:
            timestamp = datetime.datetime.today()
            print('{:{}} Start'.format(timestamp, format))
    
-       r = obj(*args, **kwargs)
+       r = obj(*args[0], **kwargs[1])
    
        if log_end:
            timestamp = datetime.datetime.today()
@@ -144,19 +179,19 @@ One could think that the solution is to have a decorator for each case::
    
    def log_start(obj):
        def decorated_object(*args, **kwargs):
-           return helper(obj, log_start=True, log_end=False, *args, **kwargs)
+           return helper(obj, log_start=True, log_end=False, (args, kwargs))
    
        return decorated_object
    
    def log_end(obj):
        def decorated_object(*args, **kwargs):
-           return helper(obj, log_start=False, log_end=True, *args, **kwargs)
+           return helper(obj, log_start=False, log_end=True, (args, kwargs))
    
        return decorated_object
    
    def log_start_and_end(obj):
        def decorated_object(*args, **kwargs):
-           return helper(obj, log_start=True, log_end=True, *args, **kwargs)
+           return helper(obj, log_start=True, log_end=True, (args, kwargs))
    
        return decorated_object
        
@@ -203,7 +238,7 @@ To improve readability, Python provides syntactic sugar for applying decorators 
    @decorator_expression
    decorated object definition
 
-What follows ``@`` must be an expression that evaluates to a function requiring only one argument.  This is important to highlight: what comes after ``@`` is not necessarily a decorator, but an expression that evalutes to one.
+What follows ``@`` must be an expression that evaluates to a decorator.  This is important to highlight: what comes after ``@`` is not necessarily a decorator, but an expression that evalutes to one.
 
 For example, given the decorator::
 
