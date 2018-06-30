@@ -139,7 +139,10 @@ When decorating an object, all metadata is losed in the decorated object::
 
 To prevent this, the functools.wraps decorator can be used::
 
+   import functools
+
    def decorator(obj):
+       @functools.wraps(obj)
        def decorated(*args, **kwargs):
            return obj(*args, **kwargs)
    
