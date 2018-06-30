@@ -129,33 +129,36 @@ When decorating an object, all metadata is losed in the decorated object::
    
        return decorated
    
-   @decorator
    def function(a: int, b: int) -> int:
        '''Returns a + b'''
        return a + b
+       
+   function = decorator(function)
    
    print(function.__qualname__)
-   print(function.__annotations__)
+   print(function.__doc__)
 
-To prevent this, the :meth:`functools.wraps` decorator can be used::
+To prevent this, :meth:`functools.update_wrapper` can be used::
 
    import functools
 
    def decorator(obj):
-       @functools.wraps(obj)
        def decorated(*args, **kwargs):
            return obj(*args, **kwargs)
    
+       functools.update_wrapper(decorated, obj)
+
        return decorated
    
-   @decorator
    def function(a: int, b: int) -> int:
        '''Returns a + b'''
        return a + b
-   
-   print(function.__qualname__)
-   print(function.__annotations__)
 
+   function = decorator(function)
+
+   print(function.__qualname__)
+   print(function.__doc__)
+   
 Decorator factories
 -------------------
 
@@ -164,6 +167,7 @@ Having only one parameter with fixed semantics, decorators have no parametrizati
 One could think that the solution is to have a decorator for each case::
 
    import datetime
+   import functools
    
    def helper(obj, log_start, log_end, args):
        format = '%Y-%m-%d %M:%H:%S'
@@ -183,6 +187,8 @@ One could think that the solution is to have a decorator for each case::
    def log_start(obj):
        def decorated_object(*args, **kwargs):
            return helper(obj, log_start=True, log_end=False, (args, kwargs))
+           
+       functools.update_wrapper(decorated_object, obj)
    
        return decorated_object
    
@@ -190,17 +196,22 @@ One could think that the solution is to have a decorator for each case::
        def decorated_object(*args, **kwargs):
            return helper(obj, log_start=False, log_end=True, (args, kwargs))
    
+       functools.update_wrapper(decorated_object, obj)
+
        return decorated_object
    
    def log_start_and_end(obj):
        def decorated_object(*args, **kwargs):
            return helper(obj, log_start=True, log_end=True, (args, kwargs))
    
+       functools.update_wrapper(decorated_object, obj)
+
        return decorated_object
        
-   @log_start
    def sayhi():
        print('Hi')
+       
+   sayhi = log_start(sayhi)
        
    sayhi()
 
@@ -213,17 +224,21 @@ Enter decorator factories.  Decorator factories take arguments, create a decorat
    def decorator_factory(log_start, log_end, format='%Y-%m-%d %M:%H:%S'):
       def decorator(obj):
           def decorated_object(*args, **kwargs):
-              if log_start:
+              def helper(text):
                   timestamp = datetime.datetime.today()
-                  print('{:{}} Start'.format(timestamp, format))
+                  print('{:{}} {}'.format(timestamp, format, text))
+              
+              if log_start:
+                  helper('Start')
 
               r = obj(*args, **kwargs)
 
               if log_end:
-                  timestamp = datetime.datetime.today()
-                  print('{:{}} End'.format(timestamp, format))
+                  helper('End')
 
               return r
+
+          functools.update_wrapper(decorated_object, obj)
 
           return decorated_object
 
@@ -245,9 +260,13 @@ What follows ``@`` must be an expression that evaluates to a decorator.  This is
 
 For example, given the decorator::
 
+   import functools
+
    def decorator(obj):
-       def decorated_object():
-           obj()
+       def decorated_object(*args, **kwargs):
+           return obj(*args, **kwargs)
+           
+       functools.update_wrapper(decorated_object, obj)
 
        return decorated_object
 
