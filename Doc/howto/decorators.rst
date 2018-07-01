@@ -118,15 +118,35 @@ Decorators can be applied in nested fashion::
 
    obj = time(log(obj))
 
-Function and coroutine decorators
----------------------------------
+Decorator functions
+-------------------
 
-xxx
+Example::
 
-Class decorators
-----------------
+   def decorator(obj):
+       def decorated(*args, **kwargs):
+           return obj(*args, **kwargs)
+   
+       return decorated
 
-xxx
+Decorator classes
+-----------------
+
+Example::
+
+   class A:
+       def __init__(self, obj):
+           self.obj = obj
+   
+       def __call__(self, *args, **kwargs):
+           return self.obj(*args, **kwargs)
+
+Decorator class instances
+-------------------------
+
+Example::
+
+   pass
 
 Preserving the decorated object metadata
 ----------------------------------------
