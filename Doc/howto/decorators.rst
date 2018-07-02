@@ -84,69 +84,28 @@ Decorators
 
 Decorators let you add logic to a function, coroutine or class.
 
-A decorator is a function that requires only one argument, a class whose constructor requires only one argument, or an instance of a class that has a :meth:`__class__` method that requires only one argument. Said argument is the function, coroutine, or class to be decorated.
+A decorator is a function that requires only one argument, or a class whose constructor requires only one argument. Said argument is the function, coroutine, or class to be decorated.
 
-Function decorator::
-
-   def decorator(obj):
-       def decorated_object(*arg, **kwargs):
-           return obj(*arg, **kwargs)
-
-       return decorated_object
-
-   def f():
-       pass
-
-   f = decorator(f)
-
-Class decorator::
-
-   def decorator(cls):
-       def __repr__(self):
-           return 'Hola'
-
-       cls.__repr__ = __repr__
-
-       return cls
-
-   class C:
-       pass
-
-   C = decorator(C)
-
-Decorators can be applied in nested fashion::
-
-   obj = time(log(obj))
-
-Decorator functions
--------------------
-
-Example::
+Decorator functions::
 
    def decorator(obj):
        def decorated(*args, **kwargs):
            return obj(*args, **kwargs)
    
        return decorated
+       
+   print = decorator(print)
 
-Decorator classes
------------------
+Decorator classes::
 
-Example::
-
-   class A:
+   class Decorator:
        def __init__(self, obj):
            self.obj = obj
    
        def __call__(self, *args, **kwargs):
            return self.obj(*args, **kwargs)
 
-Decorator class instances
--------------------------
-
-Example::
-
-   pass
+   print = Decorator(print)
 
 Preserving the decorated object metadata
 ----------------------------------------
@@ -194,11 +153,15 @@ Decorator factories
 
 Having only one parameter with fixed semantics, decorators have no parametrization.
 
-Enter decorator factories.  Decorator factories take arguments, create a decorator, and return it::
+Enter decorator factories.  Decorator factories take arguments, create a decorator, and return it.
+
+Decorator factories can be function-based or class-based.
+
+Decorator factory function::
 
    import datetime
 
-   def decorator_factory(log_start, log_end, format='%Y-%m-%d %M:%H:%S'):
+   def decorator_factory(log_start=False, log_end=False, format='%Y-%m-%d %M:%H:%S'):
       def decorator(obj):
           def decorated_object(*args, **kwargs):
               def helper(text):
@@ -221,7 +184,41 @@ Enter decorator factories.  Decorator factories take arguments, create a decorat
 
       return decorator
    
-   obj = decorator_factory(log_start=True, log_end=True, format='%Y%m%dT%M%H%S')(obj)
+   obj = decorator_factory(log_start=True, log_end=True)(obj)
+   
+Decorator factory class::
+
+   import datetime
+
+   class DecoratorFactory:
+       def __init__(self, log_start=False, log_end=False, format='%Y-%m-%d %M:%H:%S'):
+           self.log_start = log_start
+           self.log_end = log_end
+           self.format = format
+
+       def __call__(obj, *args, **kwargs):
+           def decorated_object(*args, **kwargs):
+               def helper(text):
+                   timestamp = datetime.datetime.today()
+                   print('{:{}} {}'.format(timestamp, format, text))
+               
+               if log_start:
+                   helper('Start')
+ 
+               r = obj(*args, **kwargs)
+ 
+               if log_end:
+                   helper('End')
+ 
+               return r
+ 
+           functools.update_wrapper(decorated_object, obj)
+ 
+           return decorated_object
+   
+   obj = DecoratorFactory(log_start=True, log_end=True)(obj)
+   
+In decorator factory classes, the __init__ method acts as the decorator factory, and the __call__ method acts as the decorator.
 
 Note that decorator factories are not decorators themselves: they create the right decorators for the right scenarios.
 
