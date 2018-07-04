@@ -15,13 +15,13 @@ This HOWTO explains how to write decorators and decorator factories.
 Background
 ----------
 
-Before discussing decorators, let's go over the things that make decorators possible in Python.
+Before discussing decorators and decorator factories, let's go over the things that make them possible in Python.
 
 The most important thing is that functions, coroutines and classes are first-class citizens in Python, which allows us to:
 
 * Pass them as arguments::
 
-     print(print)
+     help(print)
 
 * Return them as values::
 
@@ -35,7 +35,7 @@ The most important thing is that functions, coroutines and classes are first-cla
      my_print = print
      my_print('Hello World')
 
-Also, functions, coroutines and classes can be defined inside a function::
+Also, it's possible to define a function, a coroutine or a class in another definition::
 
    def nesting_func():
        def nested_func():
@@ -46,7 +46,7 @@ Also, functions, coroutines and classes can be defined inside a function::
 
    nesting_func()
 
-Variables accesed by a nested function but not defined in it ("free variables") are looked up in the nesting function, recursively, until reaching the non-nested function, which looks for the variable in the global namespace::
+Variables used by a nested function but not defined in it ("free variables") are looked up in the nesting function, recursively, until reaching the non-nested function, which looks for the variable at the module level::
 
    y = 'y'
 
@@ -60,14 +60,14 @@ Variables accesed by a nested function but not defined in it ("free variables") 
 
    nesting_func()
 
-The values that free variables had at the nested function definition time are stored in what is known as "closures"::
+The values that free variables had at the nested function definition time are saved in "closures"::
 
    import inspect
 
-   y = '1'
+   y = 'y'
 
    def nesting_func():
-       x = 'a'
+       x = 'x'
 
        def nested_func():
            print(x, y, z)
@@ -79,67 +79,58 @@ The values that free variables had at the nested function definition time are st
 
    print(inspect.getclosurevars(my_func))
 
+Closures allow nested functions to know the values of variables defined in functions whose lifetime has ended.
+
+Now that we have all the necessary building blocks, let's move forward.
+
 Decorators
 ----------
 
-Decorators let you add logic to a function, coroutine or class.
+To put it simple, decorators let you alter a call to a function, coroutine or class.
 
-A decorator is a function that requires only one argument, or a class whose constructor requires only one argument. Said argument is the function, coroutine, or class to be decorated.
+A decorator can be implemented with a function or a class.  When implemented with a function, the function must require only one argument; when implemented with a class, the class :meth:`__init__` method must require only one argument.  Said argument will reference the object to be decorated.
 
-Decorator functions::
+While it's usually the case for decorators to call the original object, it's not a requirement at all, and decorators can be written to outright ignore the original object.
+
+Decorator functions
+^^^^^^^^^^^^^^^^^^^
+
+Decorator functions usually return a new function which at some point calls the original object::
 
    def decorator(obj):
-       def decorated(*args, **kwargs):
+       def decorated_object(*args, **kwargs):
            return obj(*args, **kwargs)
-   
-       return decorated
-       
+
+       return decorated_object
+
    print = decorator(print)
 
-Decorator classes::
+Decorator classes
+^^^^^^^^^^^^^^^^^
+
+Decorator classes return an instance which at some point calls the original object::
 
    class Decorator:
        def __init__(self, obj):
            self.obj = obj
-   
+
        def __call__(self, *args, **kwargs):
            return self.obj(*args, **kwargs)
 
    print = Decorator(print)
 
-Preserving the decorated object metadata
-----------------------------------------
+Preserving the original object metadata
+---------------------------------------
 
-When decorating an object, all metadata is lost in the decorated object::
-
-   def decorator(obj):
-       def decorated(*args, **kwargs):
-           return obj(*args, **kwargs)
-   
-       return decorated
-   
-   def function(a: int, b: int) -> int:
-       '''Returns a + b'''
-       return a + b
-       
-   function = decorator(function)
-   
-   print(function.__qualname__)
-   print(function.__doc__)
-
-To prevent this, :meth:`functools.update_wrapper` can be used::
-
-   import functools
+All metadata of the original object is lost when a decorator returns a new object::
 
    def decorator(obj):
-       def decorated(*args, **kwargs):
+       def decorated_object(*args, **kwargs):
            return obj(*args, **kwargs)
-   
-       functools.update_wrapper(decorated, obj)
 
-       return decorated
-   
-   def function(a: int, b: int) -> int:
+       return decorated_object
+
+   def function(a: int = 1, b: int) -> int:
        '''Returns a + b'''
        return a + b
 
@@ -147,102 +138,110 @@ To prevent this, :meth:`functools.update_wrapper` can be used::
 
    print(function.__qualname__)
    print(function.__doc__)
-   
-Decorator factories
--------------------
+   print(function.__annotations__)
 
-Having only one parameter with fixed semantics, decorators have no parametrization.
+If the decorator acts as a wrapper instead of replacing the original object behaviour, this might be an inconvenience.
 
-Enter decorator factories.  Decorator factories take arguments, create a decorator, and return it.
-
-Decorator factories can be function-based or class-based.
-
-Decorator factory function::
-
-   import datetime
-
-   def decorator_factory(log_start=False, log_end=False, format='%Y-%m-%d %M:%H:%S'):
-      def decorator(obj):
-          def decorated_object(*args, **kwargs):
-              def helper(text):
-                  timestamp = datetime.datetime.today()
-                  print('{:{}} {}'.format(timestamp, format, text))
-              
-              if log_start:
-                  helper('Start')
-
-              r = obj(*args, **kwargs)
-
-              if log_end:
-                  helper('End')
-
-              return r
-
-          functools.update_wrapper(decorated_object, obj)
-
-          return decorated_object
-
-      return decorator
-   
-   obj = decorator_factory(log_start=True, log_end=True)(obj)
-   
-Decorator factory class::
-
-   import datetime
-
-   class DecoratorFactory:
-       def __init__(self, log_start=False, log_end=False, format='%Y-%m-%d %M:%H:%S'):
-           self.log_start = log_start
-           self.log_end = log_end
-           self.format = format
-
-       def __call__(obj, *args, **kwargs):
-           def decorated_object(*args, **kwargs):
-               def helper(text):
-                   timestamp = datetime.datetime.today()
-                   print('{:{}} {}'.format(timestamp, format, text))
-               
-               if log_start:
-                   helper('Start')
- 
-               r = obj(*args, **kwargs)
- 
-               if log_end:
-                   helper('End')
- 
-               return r
- 
-           functools.update_wrapper(decorated_object, obj)
- 
-           return decorated_object
-   
-   obj = DecoratorFactory(log_start=True, log_end=True)(obj)
-   
-In decorator factory classes, the __init__ method acts as the decorator factory, and the __call__ method acts as the decorator.
-
-Note that decorator factories are not decorators themselves: they create the right decorators for the right scenarios.
-
-Decoration at definition time
------------------------------
-
-To improve readability, Python provides syntactic sugar for applying decorators at definition time::
-
-   @decorator_expression
-   decorated object definition
-
-What follows ``@`` must be an expression that evaluates to a decorator.  This is important to highlight: what comes after ``@`` is not necessarily a decorator, but an expression that evalutes to one.
-
-For example, given the decorator::
+To remediate this, the standard library provides the :meth:`functools.update_wrapper` function which copies the relevant metadata from the original object to the decorated object::
 
    import functools
 
    def decorator(obj):
        def decorated_object(*args, **kwargs):
            return obj(*args, **kwargs)
-           
+
        functools.update_wrapper(decorated_object, obj)
 
        return decorated_object
+
+   def function(a: int, b: int) -> int:
+       '''Returns a + b'''
+       return a + b
+
+   function = decorator(function)
+
+   print(function.__qualname__)
+   print(function.__doc__)
+   print(function.__annotations__)
+
+Decorator factories
+-------------------
+
+Requiring only one parameter with fixed semantics, decorators have no parametrization.
+
+Enter decorator factories.  Decorator factories take as many arguments as needed, create a decorator, and return it.
+
+As with decorators, decorator factories can be implemented with functions or classes.
+
+Decorator factory functions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Decorator factory functions create a decorator, and make use of closures to provide the decorator its arguments.
+
+Example::
+
+   import datetime
+
+   def decorator_factory(format='%Y-%m-%d %M:%H:%S'):
+      def decorator(obj):
+          def decorated_object(*args, **kwargs):
+              timestamp = datetime.datetime.today()
+              print('{:{}} Start'.format(timestamp, format))
+
+              return obj(*args, **kwargs)
+
+          return decorated_object
+
+      return decorator
+
+   def obj():
+   	   print('Test')
+
+   obj = decorator_factory(format='%Y%m%dT%M%H%S')(obj)
+   obj()
+
+Decorator factory classes
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In decorator factory classes the :meth:`__init__` method acts as the decorator factory, storing all arguments as class attributes, and the :meth:`__call__` method acts as the decorator.
+
+Example::
+
+   import datetime
+
+   class DecoratorFactory:
+       def __init__(self, format='%Y-%m-%d %M:%H:%S'):
+           self.format = format
+
+       def __call__(obj, *args, **kwargs):
+           def decorated_object(*args, **kwargs):
+              timestamp = datetime.datetime.today()
+              print('{:{}} Start'.format(timestamp, self.format))
+ 
+               return obj(*args, **kwargs)
+ 
+           return decorated_object
+
+   def obj():
+   	   print('Test')
+   
+   obj = DecoratorFactory(format='%Y%m%dT%M%H%S')(obj)
+   obj()
+
+Decoration at definition time
+-----------------------------
+
+To improve readability, Python provides syntactic sugar for applying decorators at definition time::
+
+   @decoration
+   decorated object definition
+
+Where ``decoration`` is the name of a decorator or a call to a decorator factory.
+
+For example, given the NOP decorator::
+
+   def decorator(obj):
+       return obj
 
 It can be applied at definition time as::
 
@@ -257,20 +256,14 @@ Multiple decorators can be applied at definition time by putting each one in a n
    def obj():
        pass
 
-Decorator factories can also be applied at definition time::
+When multiple decorators are specified, they are applied bottom to top.
 
-   @log(start=True, end=True)
-   def obj():
-      print('Test')
-   
-   obj()
-
-Decoration at definition time is not always possible (as when definitions are made by a third party module), but when it is possible, decoration at definition time is much easier to read.
+Decoration at definition time is not always possible (as when the objects to be decorated are defined in a third party module), but when it is, it is much easier to read.
 
 Examples in the standard library
 --------------------------------
 
-The standard library provides several decorators and decorator factories that can be studied to see how they work in real life:
+The standard library provides several decorators and decorator factories that can be studied to see how they work in production code:
 
 =================================   ==========================================
 :meth:`contextlib.contextmanager`   function decorator
@@ -285,7 +278,7 @@ See also
 .. seealso::
 
    :pep:`318` - Decorators for Functions and Methods
-      A
+      The proposal that introduced syntax for decoration at definition time.
 
    :pep:`3129` - Class Decorators
-      A
+      The proposal that extended :pep:`318` to allow class decoration at definition time.
