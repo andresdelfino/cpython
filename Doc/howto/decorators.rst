@@ -30,7 +30,7 @@ The most important thing is that functions, coroutines and classes are first-cla
 
      f()('Hello World')
 
-* Bound them to new identifiers::
+* Bound them to new names::
 
      my_print = print
      my_print('Hello World')
@@ -119,6 +119,8 @@ Decorator classes return an instance which at some point calls the original obje
 
    print = Decorator(print)
 
+Usually, decorator classes return descriptor instances.
+
 Preserving the original object metadata
 ---------------------------------------
 
@@ -142,6 +144,9 @@ All metadata of the original object is lost when a decorator returns a new objec
 
 If the decorator acts as a wrapper instead of replacing the original object behaviour, this might be an inconvenience.
 
+Decorator functions
+^^^^^^^^^^^^^^^^^^^
+
 To remediate this, the standard library provides the :meth:`functools.update_wrapper` function which copies the relevant metadata from the original object to the decorated object::
 
    import functools
@@ -163,6 +168,27 @@ To remediate this, the standard library provides the :meth:`functools.update_wra
    print(function.__qualname__)
    print(function.__doc__)
    print(function.__annotations__)
+
+Decorator classes
+^^^^^^^^^^^^^^^^^
+
+xxx
+
+Preserving a reference to the original object
+---------------------------------------------
+
+It's usually helpful to reference the original value of a decorated object.
+
+:meth:`functools.update_wrapper`, addresses this by setting the ``__wrapped__`` attribute in the decorated object. This attribute is read by several functions in the :mod:`inspect` module.
+
+If you do not use :meth:`functools.update_wrapper` when implementing a decorator function, or when implementing decorator classes, you may want to manually set ``__wrapped__`` to the original object::
+
+   def decorator(obj):
+       def decorated(*args, **kwargs):
+           return obj(*args, **kwargs)
+   
+       decorated.__wrapped__ = obj
+       return decorated
 
 Decorator factories
 -------------------
@@ -231,7 +257,7 @@ Example::
 Decoration at definition time
 -----------------------------
 
-To improve readability, Python provides syntactic sugar for applying decorators at definition time::
+To improve readability, Python provides syntactic sugar (known as pie syntax) for applying decorators at definition::
 
    @decoration
    decorated object definition
@@ -282,3 +308,6 @@ See also
 
    :pep:`3129` - Class Decorators
       The proposal that extended :pep:`318` to allow class decoration at definition time.
+
+   `PythonDecoratorLibrary <https://wiki.python.org/moin/PythonDecoratorLibrary>`_ article in the Python wiki
+      A list of decorator functions and classes
