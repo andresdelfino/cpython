@@ -30,7 +30,7 @@ The most important thing is that functions, coroutines and classes are first-cla
 
      f()('Hello World')
 
-* Bound them to new names::
+* Bind them to new names::
 
      my_print = print
      my_print('Hello World')
@@ -81,16 +81,32 @@ The values that free variables had at the nested function definition time are sa
 
 Closures allow nested functions to know the values of variables defined in functions whose lifetime has ended.
 
+.. This is confusing.
+
+   The lifetime of the outer function hasn't ended; only the execution
+   of that function which created the inner function.  This is a fairly
+   important distinction, especially when we're specifically interested
+   in using the closure from our newly-created decorator.
+
 Now that we have all the necessary building blocks, let's move forward.
 
 Decorators
 ----------
 
-To put it simple, decorators let you alter a call to a function, coroutine or class.
+To put it simply, decorators let you alter a call to a function, coroutine or class.
+
+.. Not sure "coroutine" is helpful here; most likely a distraction,
+   especially since there's no example using coroutines.
 
 A decorator can be implemented with a function or a class.  When implemented with a function, the function must require only one argument; when implemented with a class, the class :meth:`__init__` method must require only one argument.  Said argument will reference the object to be decorated.
 
 While it's usually the case for decorators to call the original object, it's not a requirement at all, and decorators can be written to outright ignore the original object.
+
+.. A little confusing here.
+
+   The uses for decorating a class are often substantially different
+   from those of decorating a function.
+
 
 Decorator functions
 ^^^^^^^^^^^^^^^^^^^
@@ -104,6 +120,10 @@ Decorator functions usually return a new function which at some point calls the 
        return decorated_object
 
    print = decorator(print)
+
+.. Decorating a built-in from within a module, even as an example, seems
+   a really bad idea.  But I really like that you've started with a
+   decorator usage that doesn't use decorator syntax.
 
 Decorator classes
 ^^^^^^^^^^^^^^^^^
@@ -120,6 +140,10 @@ Decorator classes return an instance which at some point calls the original obje
    print = Decorator(print)
 
 Usually, decorator classes return descriptor instances.
+
+.. A reference (probably using the seealso directive) to the descriptor
+   howto would be useful here.
+
 
 Preserving the original object metadata
 ---------------------------------------
@@ -169,6 +193,14 @@ To remediate this, the standard library provides the :meth:`functools.update_wra
    print(function.__doc__)
    print(function.__annotations__)
 
+.. Using `functools.wraps` is often more readable; perhaps that's worth
+   an example.  It's documentation goes into more detail about how it
+   relates to `update_wrapper`.  While sematically equivalent, it
+   provides the reader context at the definition of the inner function
+   that this is what's being returned.  (Useful when there's more than
+   one inner function!)
+
+
 Decorator classes
 ^^^^^^^^^^^^^^^^^
 
@@ -190,6 +222,16 @@ If you do not use :meth:`functools.update_wrapper` when implementing a decorator
        decorated.__wrapped__ = obj
        return decorated
 
+.. It's worth really pushing use of ``functools.wraps`` and/or
+   ``functools.update_wrapper`` here.  Doing that will provide better
+   forward compatibility if additional attributes are added that should
+   be propagated to the wrapper.
+
+   The ``__wrapped__`` attribute is really for introspection support,
+   and is not needed to keep the wrapped object alive, since it's
+   referenced from the closure (which is cleaner and less prone to
+   external influence, like the wrapper getting wrapped again).
+
 Decorator factories
 -------------------
 
@@ -209,19 +251,19 @@ Example::
    import datetime
 
    def decorator_factory(format='%Y-%m-%d %M:%H:%S'):
-      def decorator(obj):
-          def decorated_object(*args, **kwargs):
-              timestamp = datetime.datetime.today()
-              print('{:{}} Start'.format(timestamp, format))
+       def decorator(obj):
+           def decorated_object(*args, **kwargs):
+               timestamp = datetime.datetime.today()
+               print('{:{}} Start'.format(timestamp, format))
 
-              return obj(*args, **kwargs)
+               return obj(*args, **kwargs)
 
-          return decorated_object
+           return decorated_object
 
-      return decorator
+       return decorator
 
    def obj():
-   	   print('Test')
+       print('Test')
 
    obj = decorator_factory(format='%Y%m%dT%M%H%S')(obj)
    obj()
@@ -261,6 +303,9 @@ To improve readability, Python provides syntactic sugar (known as pie syntax) fo
 
    @decoration
    decorated object definition
+
+.. I think this is usually called decorator syntax.  We may have called
+   it pie syntax when we were still playing with alternatives.
 
 Where ``decoration`` is the name of a decorator or a call to a decorator factory.
 
